@@ -5,6 +5,7 @@ using iText7Sign.Container;
 using Org.BouncyCastle.X509;
 using System;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace iText7Sign
 {
@@ -30,8 +31,8 @@ namespace iText7Sign
             crt_b64 = mID.GetCertificate();
             X509Certificate[] chain = CreateChainFromBase64(crt_b64, ca_b64);
 
-            byte[] signedDigest = new byte[0];
-
+            byte[] notSignedDigest ;
+            byte[] signedDigest;
 
             //create empty signature
             PdfReader reader = new PdfReader(src_file);
@@ -40,6 +41,7 @@ namespace iText7Sign
             using (MemoryStream os = new MemoryStream())
             {
                 PdfSigner stamper = new PdfSigner(reader, os, new StampingProperties());
+                stamper.SetCertificationLevel(PdfSigner.NOT_CERTIFIED);
                 PdfSignatureAppearance appearance = stamper.GetSignatureAppearance();
                 appearance.SetPageRect(new Rectangle(10, 800, 80, 40));
                 appearance.SetReason("Who I am");
@@ -47,11 +49,18 @@ namespace iText7Sign
                 appearance.SetSignatureCreator("SV");
                 appearance.SetLocationCaption("C: ");
                 appearance.SetLocation("T");
+                appearance.SetCertificate(chain[0]);
                 stamper.SetFieldName(fieldName);
-                IExternalSignatureContainer external = new ExternalBlankSignatureContainer(PdfName.Adobe_PPKLite, PdfName.ETSI_CAdES_DETACHED);
+
+                var external = new BlankSignatureContainer(PdfName.Adobe_PPKLite, PdfName.ETSI_CAdES_DETACHED, chain);
                 stamper.SignExternalContainer(external, 8192);
+                notSignedDigest = external.GetDocBytesHash();
                 fileArray = os.ToArray();
             }
+
+            var res = mID.GetSignature(Convert.ToBase64String(notSignedDigest),15);
+            signedDigest = Convert.FromBase64String(res);
+
 
             File.WriteAllBytes(tmp_file, fileArray);
 
@@ -59,7 +68,7 @@ namespace iText7Sign
             using (var reader1 = new PdfReader(tmp_file))
             {
                 var final = new ExternalSignatureContainer(chain, signedDigest, "ECDSA");
-                PdfSigner signer = new PdfSigner(reader1, ms, new StampingProperties().UseAppendMode());
+                PdfSigner signer = new PdfSigner(reader1, ms, new StampingProperties());
                 PdfSigner.SignDeferred(signer.GetDocument(), fieldName, ms, final);
                 File.WriteAllBytes(dst_file, ms.ToArray());
             }
