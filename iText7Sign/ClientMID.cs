@@ -111,7 +111,7 @@ namespace iText7Sign
             }
 
             int i = 1000;
-            int t = 30000;
+            int t = timeSpan;
 
             while (state == "RUNNING")
             {
