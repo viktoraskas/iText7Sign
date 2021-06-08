@@ -2,9 +2,12 @@
 using iText.Kernel.Pdf;
 using iText.Signatures;
 using iText7Sign.Container;
+using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Math;
 using Org.BouncyCastle.X509;
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 
 namespace iText7Sign
@@ -65,15 +68,22 @@ namespace iText7Sign
 
             var res = mID.GetSignature(Convert.ToBase64String(notSignedDigest),1000);
             signedDigest = Convert.FromBase64String(res);
-            Console.WriteLine(BitConverter.ToString(signedDigest));
+
+            //SEQUENCE {INTEGER r, INTEGER s}
+            var derSignature = new DerSequence(new DerInteger(new BigInteger(1, signedDigest.Take(32).ToArray())), new DerInteger(new BigInteger(1, signedDigest.Skip(32).ToArray()))).GetDerEncoded();
+
+            //Console.WriteLine(BitConverter.ToString(derSignature));
+
+            //return;
 
             File.WriteAllBytes(tmp_file, fileArray);
 
             using (var ms = new MemoryStream())
             using (var reader1 = new PdfReader(tmp_file))
             {
-                //var final = new ExternalSignatureContainer(chain, signedDigest);
-                var final = new ExSigContainer(chain, signedDigest);
+                //var final = new ExternalSignatureContainer(chain, derSignature);
+                //                var final = new ExSigContainer(chain, signedDigest);
+                var final = new ExSigContainer(chain, derSignature);
                 PdfSigner signer = new PdfSigner(reader1, ms, new StampingProperties());
                 PdfSigner.SignDeferred(signer.GetDocument(), fieldName, ms, final);
                 File.WriteAllBytes(dst_file, ms.ToArray());

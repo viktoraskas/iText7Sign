@@ -39,7 +39,7 @@ namespace iText7Sign.Container
         private string digestAlgorithmOid;
         private int signerversion = 1;
         private int version = 1;
-        string hashAlgorithm = "SHA-256";
+        string hashAlgorithm = "SHA256";
 
 
         private X509Certificate[] chain;
@@ -68,11 +68,12 @@ namespace iText7Sign.Container
             //return sgn.GetEncodedPKCS7(digest, PdfSigner.CryptoStandard.CADES, null, null, null);
 
             // message digest
+            digestAlgorithmOid = DigestAlgorithms.GetAllowedDigest(hashAlgorithm);
             if (digestAlgorithmOid == null)
             {
                 throw new ArgumentException("Unknown Hash Algorithm "+ hashAlgorithm);
             }
-            digestAlgorithmOid = DigestAlgorithms.GetAllowedDigest(hashAlgorithm);
+            
 
             // Copy the certificates
             signCert = chain[0];
@@ -85,7 +86,7 @@ namespace iText7Sign.Container
             digestalgos = new HashSet<string>();
             digestalgos.Add(digestAlgorithmOid);
 
-            byte[] digest = DigestAlgorithms.Digest(data, DigestAlgorithms.GetMessageDigest("SHA-256"));
+            byte[] digest = DigestAlgorithms.Digest(data, DigestAlgorithms.GetMessageDigest("SHA256"));
 
             SetExternalDigest(signature, null, "ECDSA");
 
